@@ -15,8 +15,9 @@ whotest[0]='test' || (echo 'Failure: arrays not supported in your version of bas
 #############################################################################
 
 settings=(
-    LOGOSMALL
-#    LOGOBIG
+    #LOGOSMALL
+    #LOGOBIG
+    HOSTNAME
     SYSTEM
     DATE
     UPTIME
@@ -28,16 +29,17 @@ settings=(
     # Please be aware UPDATES command may take a few seconds to run
     # If you don't like waiting, just comment it out
     UPDATES
-    WEATHER
+    #WEATHER
     CPUTEMP
     GPUTEMP
     SSHLOGINS
     LASTLOGIN
-    MESSAGES
+    SERVICES
+    #MESSAGES
 )
 
 # Accuweather location codes: https://github.com/SixBytesUnder/custom-motd/blob/master/accuweather_location_codes.txt
-weatherCode="EUR|UK|UK001|LONDON|"
+weatherCode="EUR|FR|FR012|PARIS"
 
 # Show temperatures in "C" for Celsius or "F" for Fahrenheit
 degrees=C
@@ -96,15 +98,18 @@ function metrics {
         logo="${colour[neutral]}
           .~~.   .~~.
          '. \ ' ' / .'${colour[warning]}
-          .~ .~~~..~.                      _                          _ 
+          .~ .~~~..~.                      _                          _
          : .~.'~'.~. :     ___ ___ ___ ___| |_ ___ ___ ___ _ _    ___|_|
         ~ (   ) (   ) ~   |  _| .'|_ -| . | . | -_|  _|  _| | |  | . | |
        ( : '~'.~.'~' : )  |_| |__,|___|  _|___|___|_| |_| |_  |  |  _|_|
-        ~ .~ (   ) ~. ~               |_|                 |___|  |_|    
+        ~ .~ (   ) ~. ~               |_|                 |___|  |_|
          (  : '~' :  )
           '~ .~~~. ~'
               '~'"
-        displayMessage '' "$logo"
+         displayMessage '' "$logo"
+        ;;
+    'HOSTNAME')
+        displayMessage '' "${colour[warning]} $(cat /etc/hostname | figlet -f big)"
         ;;
     'SYSTEM')
         displayMessage 'System.............:' "$(uname -snrmo)"
@@ -121,7 +126,7 @@ function metrics {
         displayMessage 'Uptime.............:' "$(printf "%d days, %02dh %02dm %02ds" "$day" "$hour" "$min" "$sec")"
         ;;
     'MEMORY')
-        displayMessage 'Memory.............:' "$(cat /proc/meminfo | grep MemFree | awk {'print $2'})kB (Free) / $(cat /proc/meminfo | grep MemTotal | awk {'print $2'})kB (Total)"
+        displayMessage 'Memory.............:' "$(cat /proc/meminfo | grep MemFree | awk {'$2=$2/1024^2;print $2'}) GB (Free) / $(cat /proc/meminfo | grep MemTotal | awk {'$2=$2/1024^2;print $2'}) GB (Total)"
         ;;
     'DISKS')
         displayMessage 'Disk...............:' "$(df -hT -x tmpfs -x vfat | grep "^/dev/" | awk '{print $1" - "$5" (Free) / "$3" (Total)"}')"
@@ -153,7 +158,13 @@ function metrics {
         displayMessage 'IP addresses.......:' "${localIP}${externalIP}"
         ;;
     'UPDATES')
-        displayMessage 'Available updates..:' "$(apt-get -s dist-upgrade | tail -n 1 | cut -d' ' -f 10) packets can be updated"
+    update="$(apt-get -s dist-upgrade | tail -n 1 | cut -d' ' -f 10)"
+
+    if [ "$update" -eq 0 ] ; then
+        displayMessage 'Available updates..:' "$update packets can be updated"
+    else
+        displayMessage 'Available updates..:' "${colour[warning]}$update packets can be updated"
+    fi
         ;;
     'WEATHER')
         if [ "$degrees" == "F" ]; then
@@ -187,6 +198,15 @@ function metrics {
     'MESSAGES')
         displayMessage 'Last 3 messages....:' ""
         displayMessage '' "${colour[reset]}$(tail -3 /var/log/messages)"
+        ;;
+    'SERVICES')
+        displayMessage '' ""
+        displayMessage 'Hosted Services....:' ""
+
+        while read line  
+        do   
+        displayMessage '        ' "[+] $line" 
+        done < services 
         ;;
     *)
         # default, do nothing
