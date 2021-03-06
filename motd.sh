@@ -206,7 +206,7 @@ function metrics {
         while read line  
         do   
         displayMessage '        ' "[+] $line" 
-        done < services 
+        done < /etc/profile.d/services 
         ;;
     *)
         # default, do nothing
